@@ -154,7 +154,7 @@ local function transplant(src, dest)
     -- destroy the original crop
     gps.go(config.relayFarmlandPos)
     deweed()
-    robot.swingDown()
+    -- robot.swingDown()
     if config.takeCareOfDrops then
         robot.suckDown()
     end

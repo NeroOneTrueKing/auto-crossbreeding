@@ -1,9 +1,11 @@
+local os = require("os")
 local gps = require("gps")
 local action = require("action")
 local database = require("database")
 local scanner = require("scanner")
 local posUtil = require("posUtil")
 local config = require("config")
+local diagnostics = require("diagnostics")
 
 local args = {...}
 local nonstop = false
@@ -24,15 +26,22 @@ local function updateLowest()
     lowestStat = 64
     lowestStatSlot = 0
     local farm = database.getFarm()
-    local workingCropName = database.getFarm()[1].name
     for slot=1, config.farmArea, 2 do
         local crop = farm[slot]
         if crop ~= nil then
-            if crop.name == 'crop' then
+            if crop.name == 'crop' or crop.name == 'weed' then
+				lowestStat = 0
                 lowestStatSlot = slot
                 break;
             else
                 local stat = crop.gr+crop.ga-crop.re
+				if crop.name ~= workingCrop then
+					if (slot % 4 == 1) then
+						stat = 0
+					else
+						stat = stat - 1
+					end
+				end
                 if stat < lowestStat then
                     lowestStat = stat
                     lowestStatSlot = slot
@@ -93,13 +102,25 @@ local function checkParent(slot, crop)
         action.deweed();
         database.updateFarm(slot, {name='crop'});
         updateLowest();
-    end
+	elseif crop.name == "air" then
+		action.placeCropStick()
+		database.updateFarm(slot, {name='crop'});
+	elseif crop.name == "crop" then
+		database.updateFarm(slot, {name='crop'});
+	elseif crop.isCrop then
+		database.updateFarm(slot, crop);
+		if slot == 1 then
+			workingCrop = crop.name;
+			updateLowest();
+		end
+	end
+	diagnostics.diagnoseAutoStat(workingCrop, lowestStat, lowestStatSlot)
 end
 
 local function breedOnce()
     -- return true if all stats are maxed out
     -- 52 = 21(max gr) + 31(max ga) - 0 (min re)
-    if not nonstop and lowestStat == 50 then
+    if not nonstop and lowestStat >= 52 then
         return true
     end
 
@@ -129,6 +150,8 @@ local function init()
     workingCrop = database.getFarm()[1].name;
 
     updateLowest()
+	gps.turnTo(1)
+	diagnostics.diagnoseAutoStat(workingCrop, lowestStat, lowestStatSlot)
     action.restockAll()
 end
 
@@ -136,15 +159,13 @@ local function main()
     init()
     while not breedOnce() do
         gps.go({0,0})
+		diagnostics.diagnoseAutoStat(workingCrop, lowestStat, lowestStatSlot)
         action.restockAll()
     end
     gps.go({0,0})
     if docleanup then
         action.destroyAll()
         gps.go({0,0})
-    end
-    if config.takeCareOfDrops then
-        action.dumpInventory()
     end
     gps.turnTo(1)
     print("Done.\nAll crops are now 21/31/0")

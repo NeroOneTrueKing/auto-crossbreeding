@@ -45,7 +45,7 @@ local config = {
 
     -- if you turn on this flag, you need to prepare a storage farm
     -- the recommend size is 13, which you change above.
-    keepNewCropWhileMinMaxing = false,
+    keepNewCropWhileMinMaxing = true,
 
     -- if you turn on this flag, the robot will only choose the crop with
     -- gr > 21, < 24, ga == 31, re == 0 to spread.
@@ -53,7 +53,7 @@ local config = {
     bestStatWhileSpreading = true,
 
     -- assume there is no bare stick in the farm, should increace speed.
-    assumeNoBareStick = true,
+    assumeNoBareStick = false,
 
     -----------Do Not Change Zone------------
 
